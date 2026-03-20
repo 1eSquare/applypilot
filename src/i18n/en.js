@@ -100,6 +100,12 @@ export default {
       cancel: 'Cancel',
       selectCV: 'Select CV',
       selectStatus: 'Select status',
+      manageStatuses: 'Manage Statuses',
+      addStatus: 'Add Status',
+      statusName: 'Status Name',
+      statusNamePlaceholder: 'e.g. Superday, Video Test, OT',
+      customStatuses: 'Custom Statuses',
+      noCustomStatuses: 'No custom statuses yet',
     },
 
     // Status labels

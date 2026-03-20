@@ -9,8 +9,9 @@ import {
   Briefcase,
   FileText,
   X,
+  Settings,
 } from 'lucide-react'
-import { useJobStore, useCVStore, JOB_STATUSES } from '../store/useStore'
+import { useJobStore, useCVStore, useStatusStore, JOB_STATUSES, CUSTOM_STATUS_COLORS } from '../store/useStore'
 import Modal from '../components/ui/Modal'
 import ConfirmDialog from '../components/ui/ConfirmDialog'
 import StatusBadge from '../components/ui/StatusBadge'
@@ -24,7 +25,7 @@ const EMPTY_JOB = {
   notes: '',
 }
 
-function JobForm({ initial, cvs, onSave, onCancel }) {
+function JobForm({ initial, cvs, allStatuses, onSave, onCancel }) {
   const { t } = useTranslation()
   const [form, setForm] = useState(initial || EMPTY_JOB)
 
@@ -65,8 +66,8 @@ function JobForm({ initial, cvs, onSave, onCancel }) {
             onChange={e => set('status', e.target.value)}
             className="w-full bg-dark-800 border border-dark-600 focus:border-primary-500 rounded-lg px-3 py-2.5 text-white text-sm outline-none transition-colors"
           >
-            {JOB_STATUSES.map(s => (
-              <option key={s.value} value={s.value}>{t(`status.${s.value}`)}</option>
+            {allStatuses.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
             ))}
           </select>
         </div>
@@ -126,15 +127,116 @@ function JobForm({ initial, cvs, onSave, onCancel }) {
   )
 }
 
+function ManageStatusesModal({ onClose }) {
+  const { t } = useTranslation()
+  const { customStatuses, addStatus, deleteStatus } = useStatusStore()
+  const [label, setLabel] = useState('')
+  const [selectedColor, setSelectedColor] = useState(0)
+
+  const handleAdd = () => {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    const { color, textColor } = CUSTOM_STATUS_COLORS[selectedColor]
+    addStatus(trimmed, color, textColor)
+    setLabel('')
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Add new */}
+      <div className="space-y-3">
+        <label className="block text-dark-300 text-xs font-medium">{t('jobs.statusName')}</label>
+        <input
+          type="text"
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          className="w-full bg-dark-800 border border-dark-600 focus:border-primary-500 rounded-lg px-3 py-2.5 text-white placeholder-dark-500 text-sm outline-none transition-colors"
+          placeholder={t('jobs.statusNamePlaceholder')}
+        />
+        {/* Color picker */}
+        <div className="flex items-center gap-2">
+          {CUSTOM_STATUS_COLORS.map((c, i) => (
+            <button
+              key={i}
+              onClick={() => setSelectedColor(i)}
+              className={`w-6 h-6 rounded-full ${c.color} transition-all ${
+                selectedColor === i ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-900 scale-110' : 'opacity-70 hover:opacity-100'
+              }`}
+            />
+          ))}
+        </div>
+        {/* Preview + Add */}
+        <div className="flex items-center gap-3">
+          {label.trim() && (
+            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CUSTOM_STATUS_COLORS[selectedColor].color} ${CUSTOM_STATUS_COLORS[selectedColor].textColor}`}>
+              {label.trim()}
+            </span>
+          )}
+          <button
+            onClick={handleAdd}
+            disabled={!label.trim()}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-600 hover:bg-primary-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-medium rounded-lg transition-colors"
+          >
+            <Plus size={13} />
+            {t('jobs.addStatus')}
+          </button>
+        </div>
+      </div>
+
+      {/* Existing custom statuses */}
+      {customStatuses.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-dark-400 text-xs font-medium">{t('jobs.customStatuses')}</p>
+          <div className="space-y-1.5">
+            {customStatuses.map(s => (
+              <div key={s.id} className="flex items-center justify-between py-1.5 px-3 bg-dark-800 rounded-lg">
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${s.color} ${s.textColor}`}>
+                  {s.label}
+                </span>
+                <button
+                  onClick={() => deleteStatus(s.id)}
+                  className="p-1 text-dark-500 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <p className="text-dark-500 text-xs text-center py-4">{t('jobs.noCustomStatuses')}</p>
+      )}
+
+      <div className="flex justify-end pt-1">
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm text-dark-300 hover:text-white bg-dark-700 hover:bg-dark-600 rounded-lg transition-colors"
+        >
+          {t('common.close')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function JobTracker() {
   const { t } = useTranslation()
   const { jobs, addJob, updateJob, deleteJob } = useJobStore()
   const { cvs } = useCVStore()
+  const { customStatuses } = useStatusStore()
   const [addOpen, setAddOpen] = useState(false)
   const [editJob, setEditJob] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
+  const [manageOpen, setManageOpen] = useState(false)
+
+  // Merge built-in + custom statuses into a unified list
+  const allStatuses = [
+    ...JOB_STATUSES.map(s => ({ value: s.value, label: t(`status.${s.value}`), color: s.color, textColor: s.textColor })),
+    ...customStatuses.map(s => ({ value: s.id, label: s.label, color: s.color, textColor: s.textColor })),
+  ]
 
   const filtered = jobs.filter(j => {
     const matchSearch = !search ||
@@ -193,7 +295,7 @@ export default function JobTracker() {
           >
             {t('jobs.filterAll')}
           </button>
-          {JOB_STATUSES.map(s => (
+          {allStatuses.map(s => (
             <button
               key={s.value}
               onClick={() => setFilterStatus(s.value)}
@@ -203,9 +305,17 @@ export default function JobTracker() {
                   : 'bg-dark-900 border border-dark-700 text-dark-300 hover:text-white hover:bg-dark-800'
               }`}
             >
-              {t(`status.${s.value}`)}
+              {s.label}
             </button>
           ))}
+          {/* Manage custom statuses */}
+          <button
+            onClick={() => setManageOpen(true)}
+            title={t('jobs.manageStatuses')}
+            className="p-2 text-dark-400 hover:text-white hover:bg-dark-800 border border-dark-700 rounded-lg transition-colors"
+          >
+            <Settings size={14} />
+          </button>
         </div>
       </div>
 
@@ -306,6 +416,7 @@ export default function JobTracker() {
       <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title={t('jobs.add')} size="lg">
         <JobForm
           cvs={cvs}
+          allStatuses={allStatuses}
           onSave={(form) => { addJob(form); setAddOpen(false) }}
           onCancel={() => setAddOpen(false)}
         />
@@ -317,10 +428,16 @@ export default function JobTracker() {
           <JobForm
             initial={editJob}
             cvs={cvs}
+            allStatuses={allStatuses}
             onSave={(form) => { updateJob(editJob.id, form); setEditJob(null) }}
             onCancel={() => setEditJob(null)}
           />
         )}
+      </Modal>
+
+      {/* Manage Statuses Modal */}
+      <Modal isOpen={manageOpen} onClose={() => setManageOpen(false)} title={t('jobs.manageStatuses')} size="md">
+        <ManageStatusesModal onClose={() => setManageOpen(false)} />
       </Modal>
 
       {/* Delete Confirm */}

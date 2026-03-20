@@ -91,3 +91,31 @@ export const JOB_STATUSES = [
   { value: 'offer', color: 'bg-green-600', textColor: 'text-green-300' },
   { value: 'rejected', color: 'bg-red-700', textColor: 'text-red-300' },
 ]
+
+// Color palette for custom statuses
+export const CUSTOM_STATUS_COLORS = [
+  { color: 'bg-teal-600', textColor: 'text-teal-200' },
+  { color: 'bg-orange-600', textColor: 'text-orange-200' },
+  { color: 'bg-pink-600', textColor: 'text-pink-200' },
+  { color: 'bg-cyan-600', textColor: 'text-cyan-200' },
+  { color: 'bg-lime-600', textColor: 'text-lime-200' },
+  { color: 'bg-amber-500', textColor: 'text-amber-100' },
+  { color: 'bg-rose-600', textColor: 'text-rose-200' },
+  { color: 'bg-violet-600', textColor: 'text-violet-200' },
+]
+
+// Custom statuses
+export function useStatusStore() {
+  const [customStatuses, setCustomStatuses] = useLocalStorage('applypilot_custom_statuses', [])
+
+  const addStatus = useCallback((label, color, textColor) => {
+    const id = 'custom_' + Date.now()
+    setCustomStatuses(prev => [...prev, { id, label, color, textColor }])
+  }, [setCustomStatuses])
+
+  const deleteStatus = useCallback((id) => {
+    setCustomStatuses(prev => prev.filter(s => s.id !== id))
+  }, [setCustomStatuses])
+
+  return { customStatuses, addStatus, deleteStatus }
+}

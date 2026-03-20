@@ -100,6 +100,12 @@ export default {
       cancel: '取消',
       selectCV: '选择简历',
       selectStatus: '选择状态',
+      manageStatuses: '自定义状态',
+      addStatus: '添加状态',
+      statusName: '状态名称',
+      statusNamePlaceholder: '如：Superday、视频面试、笔试OT',
+      customStatuses: '已添加的自定义状态',
+      noCustomStatuses: '暂无自定义状态',
     },
 
     // Status labels
